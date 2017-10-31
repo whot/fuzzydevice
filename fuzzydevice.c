@@ -15,6 +15,9 @@
 #include <libevdev/libevdev.h>
 #include <libevdev/libevdev-uinput.h>
 
+static FILE *evemu_file;
+static FILE *libinput_file;
+
 static int open_restricted(const char *path, int flags,
 			   void *data)
 {
@@ -144,23 +147,28 @@ send_events(struct libevdev *d,
 			}
 
 
-			printf("E: %lu.%06lu %04x %04x %04d    ",
-			       tp.tv_sec,
-			       tp.tv_nsec / 1000,
-			       type, code, value);
-			printf("# %s / %-20s %d\n",
-			       libevdev_event_type_get_name(type),
-			       libevdev_event_code_get_name(type, code),
-			       value);
+			/* evemu format */
+			fprintf(evemu_file,
+				"E: %lu.%06lu %04x %04x %04d    ",
+				tp.tv_sec,
+				tp.tv_nsec / 1000,
+				type, code, value);
+			fprintf(evemu_file,
+				"# %s / %-20s %d\n",
+				libevdev_event_type_get_name(type),
+				libevdev_event_code_get_name(type, code),
+				value);
 			libevdev_uinput_write_event(uinput, type, code, value);
 		}
 
-		printf("E: %lu.%06lu %04x %04x %04d    ",
-		       tp.tv_sec, tp.tv_nsec / 1000, EV_SYN, SYN_REPORT, 0);
-		printf("# ------------ %s (%d) ---------- %+ldms\n",
-		       libevdev_event_code_get_name(EV_SYN, SYN_REPORT),
-		       0,
-		       dt);
+		fprintf(evemu_file,
+			"E: %lu.%06lu %04x %04x %04d    ",
+			tp.tv_sec, tp.tv_nsec / 1000, EV_SYN, SYN_REPORT, 0);
+		fprintf(evemu_file,
+			"# ------------ %s (%d) ---------- %+ldms\n",
+			libevdev_event_code_get_name(EV_SYN, SYN_REPORT),
+			0,
+			dt);
 
 		libevdev_uinput_write_event(uinput, EV_SYN, SYN_REPORT, 0);
 		drain_events(li);
@@ -174,7 +182,7 @@ log_handler(struct libinput *libinput,
 	    const char *format,
 	    va_list args)
 {
-	vfprintf(stderr, format, args);
+	vfprintf(libinput_file, format, args);
 }
 
 static void
@@ -189,6 +197,13 @@ test_one_device(int iteration)
 	struct evemu_device *device;
 	int fd;
 
+	printf("Testing fuzzy device %d\n", iteration);
+
+	snprintf(name, sizeof(name), "fuzzy-device-%d.evemu", iteration);
+	evemu_file = fopen(name, "w");
+
+	snprintf(name, sizeof(name), "fuzzy-device-%d.libinput", iteration);
+	libinput_file = fopen(name, "w");
 
 	snprintf(name, sizeof(name), "fuzzy device %d", iteration);
 	d = init_random_device(name);
@@ -198,20 +213,11 @@ test_one_device(int iteration)
 						&uinput);
 	assert(rc == 0);
 
-	printf("#############################################################\n"
-	       "#################### fuzzy device %d ########################\n"
-	       "#############################################################\n",
-	       iteration);
-	fprintf(stderr,
-	       "#############################################################\n"
-	       "#################### fuzzy device %d ########################\n"
-	       "#############################################################\n",
-	       iteration);
 	device = evemu_new(NULL);
 	setbuf(stdout, NULL);
 	fd = open(libevdev_uinput_get_devnode(uinput), O_RDWR);
 	evemu_extract(device, fd);
-	evemu_write(device, stdout);
+	evemu_write(device, evemu_file);
 	close(fd);
 
 	udev = udev_new();
@@ -228,6 +234,11 @@ test_one_device(int iteration)
 	libevdev_free(d);
 	libinput_unref(li);
 	udev_unref(udev);
+
+	fclose(evemu_file);
+	evemu_file = stdout;
+	fclose(libinput_file);
+	libinput_file = stderr;
 }
 
 static bool stop = false;
@@ -243,11 +254,14 @@ main (int argc, char **argv)
 {
 	int iteration = 0;
 
+	evemu_file = stdout;
+	libinput_file = stderr;
+
 	signal(SIGINT, sighandler);
 
 	while (!stop) {
 		test_one_device(iteration++);
-		usleep(500);
+		usleep(200000);
 	}
 
 	return 0;
