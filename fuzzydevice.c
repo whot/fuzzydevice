@@ -60,6 +60,8 @@ init_random_device(const char *name)
 			continue;
 
 		code = random() % (max + 1);
+		if (type == EV_SW && code == SW_RFKILL_ALL)
+			continue;
 
 		libevdev_enable_event_code(d, type, code,
 					   (type == EV_ABS) ? &abs : NULL);
