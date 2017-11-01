@@ -203,9 +203,11 @@ test_one_device(int iteration)
 
 	snprintf(name, sizeof(name), "fuzzy-device-%d.evemu", iteration);
 	evemu_file = fopen(name, "w");
+	setbuf(evemu_file, NULL);
 
 	snprintf(name, sizeof(name), "fuzzy-device-%d.libinput", iteration);
 	libinput_file = fopen(name, "w");
+	setbuf(libinput_file, NULL);
 
 	snprintf(name, sizeof(name), "fuzzy device %d", iteration);
 	d = init_random_device(name);
