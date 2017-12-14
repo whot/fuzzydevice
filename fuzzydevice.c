@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <evemu.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -187,17 +188,33 @@ log_handler(struct libinput *libinput,
 	vfprintf(libinput_file, format, args);
 }
 
+static struct
+udev_device *poll_for_udev_event(struct udev_monitor *monitor,
+				 int timeout)
+{
+	struct pollfd fds = {0};
+
+	fds.fd = udev_monitor_get_fd(monitor);
+	fds.events = POLLIN;
+
+	if (!poll(&fds, 1, timeout))
+		return NULL;
+
+	return udev_monitor_receive_device(monitor);
+}
+
 static void
-test_one_device(int iteration)
+test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 {
 	struct libinput *li;
-	struct udev *udev;
 	struct libevdev_uinput *uinput = NULL;
 	struct libevdev *d;
 	char name[64];
 	int rc;
 	struct evemu_device *device;
+	struct udev_device *udev_device;
 	int fd;
+	bool found = false;
 
 	printf("Testing fuzzy device %d\n", iteration);
 
@@ -217,6 +234,17 @@ test_one_device(int iteration)
 						&uinput);
 	assert(rc == 0);
 
+	while (!found) {
+		udev_device = poll_for_udev_event(monitor, 2000);
+		if (!udev_device)
+			usleep(200000);
+		else if (!strcmp("add", udev_device_get_action(udev_device)) &&
+			 udev_device_get_devnode(udev_device) &&
+			 !strcmp(udev_device_get_devnode(udev_device), libevdev_uinput_get_devnode(uinput)))
+			found = true;
+		udev_device_unref(udev_device);
+	}
+
 	device = evemu_new(NULL);
 	setbuf(stdout, NULL);
 	fd = open(libevdev_uinput_get_devnode(uinput), O_RDWR);
@@ -224,7 +252,6 @@ test_one_device(int iteration)
 	evemu_write(device, evemu_file);
 	close(fd);
 
-	udev = udev_new();
 	li = libinput_udev_create_context(&simple_interface, NULL, udev);
 	assert(li);
 	libinput_log_set_handler(li, log_handler);
@@ -237,7 +264,9 @@ test_one_device(int iteration)
 	libevdev_uinput_destroy(uinput);
 	libevdev_free(d);
 	libinput_unref(li);
-	udev_unref(udev);
+
+	while (udev_device)
+		udev_device = udev_monitor_receive_device(monitor);
 
 	fclose(evemu_file);
 	evemu_file = stdout;
@@ -256,17 +285,40 @@ sighandler(int sig)
 int
 main (int argc, char **argv)
 {
+	struct udev *udev;
+	struct udev_monitor *monitor;
 	int iteration = 0;
+	int ret;
 
 	evemu_file = stdout;
 	libinput_file = stderr;
 
+	udev = udev_new();
+	assert(udev);
+
+	monitor = udev_monitor_new_from_netlink(udev, "udev");
+	assert(monitor);
+
+	ret = udev_monitor_filter_add_match_subsystem_devtype(monitor,
+							      "input",
+							      NULL);
+	assert(ret == 0);
+
+	ret = udev_monitor_filter_update(monitor);
+	assert(ret == 0);
+
+	ret = udev_monitor_enable_receiving(monitor);
+	assert(ret == 0);
+
 	signal(SIGINT, sighandler);
 
 	while (!stop) {
-		test_one_device(iteration++);
-		usleep(200000);
+		test_one_device(udev, monitor, iteration++);
 	}
+
+	monitor = udev_monitor_unref(monitor);
+	udev = udev_unref(udev);
+	assert(udev == NULL);
 
 	return 0;
 }
