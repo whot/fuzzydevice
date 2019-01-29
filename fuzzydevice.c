@@ -208,15 +208,14 @@ log_handler(struct libinput *libinput,
 }
 
 static struct
-udev_device *poll_for_udev_event(struct udev_monitor *monitor,
-				 int timeout)
+udev_device *poll_for_udev_event(struct udev_monitor *monitor, int ms)
 {
 	struct pollfd fds = {0};
 
 	fds.fd = udev_monitor_get_fd(monitor);
 	fds.events = POLLIN;
 
-	if (!poll(&fds, 1, timeout))
+	if (!poll(&fds, 1, ms))
 		return NULL;
 
 	return udev_monitor_receive_device(monitor);
