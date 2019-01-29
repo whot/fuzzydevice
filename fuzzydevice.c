@@ -236,15 +236,15 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 
 	printf("\rTesting fuzzy device %d", iteration);
 
-	snprintf(name, sizeof(name), "fuzzy-device-%d.evemu", iteration);
+	snprintf(name, sizeof(name), "fuzzydevice-%d.evemu", iteration);
 	evemu_file = fopen(name, "w");
 	setbuf(evemu_file, NULL);
 
-	snprintf(name, sizeof(name), "fuzzy-device-%d.libinput", iteration);
+	snprintf(name, sizeof(name), "fuzzydevice-%d.libinput", iteration);
 	libinput_file = fopen(name, "w");
 	setbuf(libinput_file, NULL);
 
-	snprintf(name, sizeof(name), "fuzzy device %d", iteration);
+	snprintf(name, sizeof(name), "fuzzydevice %d", iteration);
 	d = init_random_device(name);
 	assert(d);
 	rc = libevdev_uinput_create_from_device(d,
