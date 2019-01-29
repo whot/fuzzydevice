@@ -227,6 +227,7 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 	struct libinput *li;
 	struct libevdev_uinput *uinput = NULL;
 	struct libevdev *d;
+	char evemu_name[64], libinput_name[64];
 	char name[64];
 	int rc;
 	struct evemu_device *device;
@@ -236,12 +237,12 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 
 	printf("\rTesting fuzzy device %d", iteration);
 
-	snprintf(name, sizeof(name), "fuzzydevice-%d.evemu", iteration);
-	evemu_file = fopen(name, "w");
+	snprintf(evemu_name, sizeof(evemu_name), "fuzzydevice-%d.evemu", iteration);
+	evemu_file = fopen(evemu_name, "w");
 	setbuf(evemu_file, NULL);
 
-	snprintf(name, sizeof(name), "fuzzydevice-%d.libinput", iteration);
-	libinput_file = fopen(name, "w");
+	snprintf(libinput_name, sizeof(libinput_name), "fuzzydevice-%d.libinput", iteration);
+	libinput_file = fopen(libinput_name, "w");
 	setbuf(libinput_file, NULL);
 
 	snprintf(name, sizeof(name), "fuzzydevice %d", iteration);
@@ -287,8 +288,12 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 		udev_device = udev_monitor_receive_device(monitor);
 
 	fclose(evemu_file);
-	evemu_file = stdout;
 	fclose(libinput_file);
+
+	unlink(evemu_name);
+	unlink(libinput_name);
+
+	evemu_file = stdout;
 	libinput_file = stderr;
 }
 
