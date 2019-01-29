@@ -283,9 +283,12 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 	libevdev_uinput_destroy(uinput);
 	libevdev_free(d);
 	libinput_unref(li);
+	evemu_delete(device);
 
-	while (udev_device)
+	while (udev_device) {
 		udev_device = udev_monitor_receive_device(monitor);
+		udev_device_unref(udev_device);
+	}
 
 	fclose(evemu_file);
 	fclose(libinput_file);
