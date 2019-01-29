@@ -346,7 +346,7 @@ main (int argc, char **argv)
 		test_one_device(udev, monitor, iteration++);
 	}
 
-	monitor = udev_monitor_unref(monitor);
+	udev_monitor_unref(monitor);
 	udev = udev_unref(udev);
 	assert(udev == NULL);
 
