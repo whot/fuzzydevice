@@ -135,6 +135,9 @@ send_events(struct libevdev *d,
 		}
 	}
 
+	if (nbits == 0)
+		return;
+
 	clock_gettime(CLOCK_MONOTONIC, &tp_last);
 
 	while (nframes--) {
