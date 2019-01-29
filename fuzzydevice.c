@@ -235,7 +235,7 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
 	int fd;
 	bool found = false;
 
-	printf("Testing fuzzy device %d\n", iteration);
+	printf("\rTesting fuzzy device %d", iteration);
 
 	snprintf(name, sizeof(name), "fuzzy-device-%d.evemu", iteration);
 	evemu_file = fopen(name, "w");
@@ -313,6 +313,8 @@ main (int argc, char **argv)
 		fprintf(stderr, "Run me as root\n");
 		return 77;
 	}
+
+	setbuf(stdout, NULL);
 
 	evemu_file = stdout;
 	libinput_file = stderr;
