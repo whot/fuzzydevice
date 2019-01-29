@@ -19,6 +19,8 @@
 static FILE *evemu_file;
 static FILE *libinput_file;
 
+#define evbit(t_, c_) ((t_) << 16 | (c_))
+
 static int open_restricted(const char *path, int flags,
 			   void *data)
 {
@@ -61,8 +63,6 @@ init_random_device(const char *name)
 			continue;
 
 		code = random() % (max + 1);
-		if (type == EV_SW && code == SW_RFKILL_ALL)
-			continue;
 
 		libevdev_enable_event_code(d, type, code,
 					   (type == EV_ABS) ? &abs : NULL);
@@ -112,6 +112,22 @@ send_events(struct libevdev *d,
 		for (code = 0; code <= (unsigned int)max; code++) {
 			if (!libevdev_has_event_code(d, type, code))
 				continue;
+
+			/* Blacklist a few codes so we don't shut the
+			 * machine down halfway */
+			switch (evbit(type, code)){
+			case evbit(EV_SW, SW_RFKILL_ALL):
+			case evbit(EV_SW, SW_TABLET_MODE):
+			case evbit(EV_SW, SW_LID):
+			case evbit(EV_KEY, KEY_POWER):
+			case evbit(EV_KEY, KEY_POWER2):
+			case evbit(EV_KEY, KEY_SLEEP):
+			case evbit(EV_KEY, KEY_SUSPEND):
+			case evbit(EV_KEY, KEY_RESTART):
+				continue;
+			default:
+				break;
+			}
 
 			bits[nbits].type = type;
 			bits[nbits].code = code;
