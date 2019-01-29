@@ -306,6 +306,11 @@ main (int argc, char **argv)
 	int iteration = 0;
 	int ret;
 
+	if (getuid() != 0) {
+		fprintf(stderr, "Run me as root\n");
+		return 77;
+	}
+
 	evemu_file = stdout;
 	libinput_file = stderr;
 
