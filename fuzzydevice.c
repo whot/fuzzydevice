@@ -224,7 +224,8 @@ udev_device *poll_for_udev_event(struct udev_monitor *monitor, int ms)
 }
 
 static void
-test_one_device(struct udev *udev, struct udev_monitor *monitor, const char *name)
+test_one_device(struct udev *udev, struct udev_monitor *monitor,
+		const char *name, unsigned int seed, long int rand)
 {
 	struct libinput *li;
 	struct libevdev_uinput *uinput = NULL;
@@ -268,6 +269,8 @@ test_one_device(struct udev *udev, struct udev_monitor *monitor, const char *nam
 	evemu_extract(device, fd);
 	evemu_write(device, evemu_file);
 	close(fd);
+
+	fprintf(evemu_file, "#\n# seed: %d\n# random: %ld\n#\n", seed, rand);
 
 	li = libinput_udev_create_context(&simple_interface, NULL, udev);
 	assert(li);
@@ -417,7 +420,7 @@ main (int argc, char **argv)
 		snprintf(name, sizeof(name), "fuzzydevice-%06d", iteration);
 
 		printf("\rTesting %s (seed %10d random %10ld)", name, seed, r);
-		test_one_device(udev, monitor, name);
+		test_one_device(udev, monitor, name, seed, r);
 		iteration++;
 		r = random();
 	}
