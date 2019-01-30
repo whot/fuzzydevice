@@ -15,6 +15,12 @@ fuzzydevice creates a new libinput context for each device and calls
 `libinput_dispatch()` for the events. The events themselves are discarded,
 the goal is to find libinput segfaults.
 
+**WARNING:** fuzzydevice will send truly random events, including key
+presses, mouse button clicks and pointer movements. This may result in data
+being deleted, applications closed, processes cancelled, etc. It is
+recommended that fuzzydevice is run in a virtual machine where it can't do
+any damage to the host.
+
 Compilation and running
 -----------------------
 
