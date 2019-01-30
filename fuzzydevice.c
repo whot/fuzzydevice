@@ -308,11 +308,12 @@ sighandler(int sig)
 
 static void usage(void)
 {
-	printf("Usage: %s [--help] [--seed=123] [--limit=10]\n"
+	printf("Usage: %s [--help] [--seed=123] [--limit=10] [--random=123456]\n"
 	       "\n"
 	       "Options:\n"
-	       "--seed ... set the random number generator seed\n"
-	       "--limit ... stop after limit iterations\n"
+	       "--seed ..... set the random number generator seed\n"
+	       "--limit .... stop after limit iterations\n"
+	       "--random ... reproduce only for the device with that random number\n"
 	       "",
 	       program_invocation_short_name);
 }
@@ -324,10 +325,12 @@ main (int argc, char **argv)
 		OPT_HELP = 1,
 		OPT_SEED,
 		OPT_LIMIT,
+		OPT_RANDOM,
 	};
 	struct option opts[] = {
 		{ "seed", required_argument, 0, OPT_SEED },
 		{ "limit", required_argument, 0, OPT_LIMIT },
+		{ "random", required_argument, 0, OPT_RANDOM },
 		{ 0, 0, 0, 0 },
 	};
 	struct udev *udev;
@@ -335,6 +338,7 @@ main (int argc, char **argv)
 	unsigned int iteration = 0;
 	unsigned int limit = INT_MAX;
 	int ret;
+	long int random_number = 0;
 	unsigned int seed = (unsigned int)time(NULL);
 
 	if (getuid() != 0) {
@@ -361,12 +365,14 @@ main (int argc, char **argv)
 		case OPT_LIMIT:
 			limit = atoi(optarg);
 			break;
+		case OPT_RANDOM:
+			limit = 1;
+			random_number = atoi(optarg);
+			break;
 		}
 	}
 
-
 	srandom(seed);
-	printf("Random seed: %d\n", seed);
 
 	setbuf(stdout, NULL);
 
@@ -392,14 +398,28 @@ main (int argc, char **argv)
 
 	signal(SIGINT, sighandler);
 
+	long int r = random();
+	if (random_number) {
+		printf("Advancing to random number %ld\n", random_number);
+
+		while (r != random_number)
+			r = random();
+	}
+
 	while (!stop && iteration < limit) {
 		char name[64];
 
-		snprintf(name, sizeof(name), "fuzzydevice-%d", iteration);
+		if (random_number && r != random_number) {
+			printf(".");
+			continue;
+		}
 
-		printf("\rTesting %s", name);
+		snprintf(name, sizeof(name), "fuzzydevice-%06d", iteration);
+
+		printf("\rTesting %s (seed %10d random %10ld)", name, seed, r);
 		test_one_device(udev, monitor, name);
 		iteration++;
+		r = random();
 	}
 
 	udev_monitor_unref(monitor);
