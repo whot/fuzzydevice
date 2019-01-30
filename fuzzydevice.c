@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <evemu.h>
+#include <getopt.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -308,18 +309,60 @@ sighandler(int sig)
 	stop = true;
 }
 
+static void usage(void)
+{
+	printf("Usage: %s [--help] [--seed=123]\n"
+	       "\n"
+	       "Options:\n"
+	       "--seed ... set the random number generator seed\n"
+	       "",
+	       program_invocation_short_name);
+}
+
 int
 main (int argc, char **argv)
 {
+	enum options {
+		OPT_HELP = 1,
+		OPT_SEED,
+	};
+	struct option opts[] = {
+		{ "seed", required_argument, 0, OPT_SEED },
+		{ 0, 0, 0, 0 },
+	};
 	struct udev *udev;
 	struct udev_monitor *monitor;
 	int iteration = 0;
 	int ret;
+	unsigned int seed = (unsigned int)time(NULL);
 
 	if (getuid() != 0) {
 		fprintf(stderr, "Run me as root\n");
 		return 77;
 	}
+
+	while (1) {
+		int c;
+		int option_index = 0;
+
+		c = getopt_long(argc, argv, "h", opts, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+		case OPT_HELP:
+			usage();
+			return 0;
+		case OPT_SEED:
+			seed = atoi(optarg);
+			break;
+		}
+	}
+
+
+	srandom(seed);
+	printf("Random seed: %d\n", seed);
 
 	setbuf(stdout, NULL);
 

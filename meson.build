@@ -3,7 +3,7 @@ project('fuzzydev', 'c',
 	license : 'MIT/Expat',
 	default_options : [ 'c_std=gnu99', 'warning_level=2' ])
 
-cflags = ['-Wno-unused-parameter', '-Wmissing-prototypes', '-Wstrict-prototypes']
+cflags = ['-Wno-unused-parameter', '-Wmissing-prototypes', '-Wstrict-prototypes', '-D_GNU_SOURCE=1']
 add_project_arguments(cflags, language : 'c')
 
 dep_libinput = dependency('libinput')
