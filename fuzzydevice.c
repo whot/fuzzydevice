@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <evemu.h>
+#include <limits.h>
 #include <getopt.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -307,10 +308,11 @@ sighandler(int sig)
 
 static void usage(void)
 {
-	printf("Usage: %s [--help] [--seed=123]\n"
+	printf("Usage: %s [--help] [--seed=123] [--limit=10]\n"
 	       "\n"
 	       "Options:\n"
 	       "--seed ... set the random number generator seed\n"
+	       "--limit ... stop after limit iterations\n"
 	       "",
 	       program_invocation_short_name);
 }
@@ -321,14 +323,17 @@ main (int argc, char **argv)
 	enum options {
 		OPT_HELP = 1,
 		OPT_SEED,
+		OPT_LIMIT,
 	};
 	struct option opts[] = {
 		{ "seed", required_argument, 0, OPT_SEED },
+		{ "limit", required_argument, 0, OPT_LIMIT },
 		{ 0, 0, 0, 0 },
 	};
 	struct udev *udev;
 	struct udev_monitor *monitor;
-	int iteration = 0;
+	unsigned int iteration = 0;
+	unsigned int limit = INT_MAX;
 	int ret;
 	unsigned int seed = (unsigned int)time(NULL);
 
@@ -352,6 +357,9 @@ main (int argc, char **argv)
 			return 0;
 		case OPT_SEED:
 			seed = atoi(optarg);
+			break;
+		case OPT_LIMIT:
+			limit = atoi(optarg);
 			break;
 		}
 	}
@@ -384,7 +392,7 @@ main (int argc, char **argv)
 
 	signal(SIGINT, sighandler);
 
-	while (!stop) {
+	while (!stop && iteration < limit) {
 		char name[64];
 
 		snprintf(name, sizeof(name), "fuzzydevice-%d", iteration);
