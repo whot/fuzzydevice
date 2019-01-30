@@ -429,6 +429,8 @@ main (int argc, char **argv)
 	udev = udev_unref(udev);
 	assert(udev == NULL);
 
+	printf("\n");
+
 	return 0;
 }
 
