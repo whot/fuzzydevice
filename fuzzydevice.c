@@ -223,30 +223,26 @@ udev_device *poll_for_udev_event(struct udev_monitor *monitor, int ms)
 }
 
 static void
-test_one_device(struct udev *udev, struct udev_monitor *monitor, int iteration)
+test_one_device(struct udev *udev, struct udev_monitor *monitor, const char *name)
 {
 	struct libinput *li;
 	struct libevdev_uinput *uinput = NULL;
 	struct libevdev *d;
 	char evemu_name[64], libinput_name[64];
-	char name[64];
 	int rc;
 	struct evemu_device *device;
 	struct udev_device *udev_device;
 	int fd;
 	bool found = false;
 
-	printf("\rTesting fuzzy device %d", iteration);
-
-	snprintf(evemu_name, sizeof(evemu_name), "fuzzydevice-%d.evemu", iteration);
+	snprintf(evemu_name, sizeof(evemu_name), "%s.evemu", name);
 	evemu_file = fopen(evemu_name, "w");
 	setbuf(evemu_file, NULL);
 
-	snprintf(libinput_name, sizeof(libinput_name), "fuzzydevice-%d.libinput", iteration);
+	snprintf(libinput_name, sizeof(libinput_name), "%s.libinput", name);
 	libinput_file = fopen(libinput_name, "w");
 	setbuf(libinput_file, NULL);
 
-	snprintf(name, sizeof(name), "fuzzydevice %d", iteration);
 	d = init_random_device(name);
 	assert(d);
 	rc = libevdev_uinput_create_from_device(d,
@@ -389,7 +385,13 @@ main (int argc, char **argv)
 	signal(SIGINT, sighandler);
 
 	while (!stop) {
-		test_one_device(udev, monitor, iteration++);
+		char name[64];
+
+		snprintf(name, sizeof(name), "fuzzydevice-%d", iteration);
+
+		printf("\rTesting %s", name);
+		test_one_device(udev, monitor, name);
+		iteration++;
 	}
 
 	udev_monitor_unref(monitor);
